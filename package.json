@@ -1,5 +1,5 @@
 {
-  "name": "lquibase-viewer",
+  "name": "liquibase-viewer",
   "version": "0.0.0",
   "private": true,
   "engines": {

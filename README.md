@@ -1,2 +1,2 @@
-# lquibase_viewer
+# liquibase_viewer
 liquibase_viewer

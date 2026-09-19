@@ -1,0 +1,33 @@
+# Default configuration for liquibase-viewer.
+#
+# Point this at the database that holds the Liquibase bookkeeping tables. A
+# different file can be selected with `--config <path>` or the CONFIG
+# environment variable.
+#
+# The database password is never stored here: it is read from the environment
+# variable named by `database.passwordEnv` (VIEWER_DB_PASSWORD by default).
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  name: ddl_utils
+  user: postgres
+  passwordEnv: VIEWER_DB_PASSWORD
+  ssl: false
+
+# The Liquibase changelog table. A database can hold several changelog tables
+# for different deployments; point these at the right schema and table.
+changelog:
+  schema: public
+  table: databasechangelog
+
+# The Liquibase lock table.
+lock:
+  schema: public
+  table: databasechangeloglock
+
+server:
+  host: 127.0.0.1
+  port: 3210
+  pageSize: 25
+  maxPageSize: 200

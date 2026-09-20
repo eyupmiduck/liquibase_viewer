@@ -61,10 +61,12 @@ VIEWER_DB_PASSWORD=postgres npm start
 Then open <http://127.0.0.1:3210>.
 
 To start it against the local `ddl_utils` development database, use the helper
-script (it supplies that database's password for you):
+script (it supplies that database's password for you) and stop it again with
+the matching script:
 
 ```sh
-scripts/run-local.sh
+scripts/run-local.sh    # records its PID for stop-local.sh
+scripts/stop-local.sh
 ```
 
 A different configuration file can be selected either way:

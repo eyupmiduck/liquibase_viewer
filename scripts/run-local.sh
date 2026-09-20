@@ -18,6 +18,8 @@
 #   VIEWER_DB_PASSWORD  database password (default: postgres)
 #   VIEWER_HOST         host to check (default: 127.0.0.1)
 #   VIEWER_PORT         port to check (default: 5432)
+#   VIEWER_PIDFILE      where to record the server PID, for stop-local.sh
+#                       (default: ${TMPDIR:-/tmp}/liquibase-viewer.pid)
 
 set -euo pipefail
 
@@ -50,5 +52,10 @@ if command -v pg_isready >/dev/null 2>&1 &&
     echo "         start the ddl_utils database with ddl_utils/scripts/start-local-db.sh" >&2
 fi
 
-echo "Starting liquibase-viewer against the ddl_utils database..."
+pidfile="${VIEWER_PIDFILE:-${TMPDIR:-/tmp}/liquibase-viewer.pid}"
+# Record the PID before exec: exec keeps the same PID, so the file ends up
+# holding the node process, which stop-local.sh can then stop.
+echo "$$" > "$pidfile"
+
+echo "Starting liquibase-viewer against the ddl_utils database (pid $$)..."
 exec node src/server.js "$@"

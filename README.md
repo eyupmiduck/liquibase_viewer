@@ -59,9 +59,18 @@ VIEWER_DB_PASSWORD=postgres npm start
 
 Then open <http://127.0.0.1:3210>.
 
+To start it against the local `ddl_utils` development database, use the helper
+script (it supplies that database's password for you):
+
 ```sh
-# a different configuration file
+scripts/run-local.sh
+```
+
+A different configuration file can be selected either way:
+
+```sh
 VIEWER_DB_PASSWORD=secret npm start -- --config config/prod.yaml
+scripts/run-local.sh --config config/prod.yaml
 ```
 
 ## Development

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Liquibase viewer</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Liquibase viewer</h1>
+        <p class="subtitle" id="target">Loading…</p>
+      </div>
+      <div class="lock" id="lock" hidden>
+        <span class="dot" id="lock-dot"></span>
+        <span id="lock-text"></span>
+        <button type="button" id="unlock" hidden>Unlock</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <form id="filters" class="filters" autocomplete="off">
+          <label>
+            <span>ID</span>
+            <input name="id" type="text" placeholder="contains" />
+          </label>
+          <label>
+            <span>Author</span>
+            <input name="author" type="text" placeholder="contains" />
+          </label>
+          <label>
+            <span>File</span>
+            <input name="filename" type="text" placeholder="contains" />
+          </label>
+          <label>
+            <span>Type</span>
+            <input name="exectype" type="text" placeholder="contains" />
+          </label>
+          <label>
+            <span>Tag</span>
+            <input name="tag" type="text" placeholder="contains" />
+          </label>
+          <label>
+            <span>From</span>
+            <input name="from" type="date" />
+          </label>
+          <label>
+            <span>To</span>
+            <input name="to" type="date" />
+          </label>
+          <div class="filters-actions">
+            <button type="submit">Apply</button>
+            <button type="button" id="clear" class="ghost">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="table-wrap">
+          <table id="changelog">
+            <thead>
+              <tr>
+                <th class="num" data-sort="orderexecuted">#</th>
+                <th data-sort="id">ID</th>
+                <th data-sort="author">Author</th>
+                <th data-sort="filename">File</th>
+                <th data-sort="exectype">Type</th>
+                <th data-sort="tag">Tag</th>
+                <th data-sort="dateexecuted">Executed</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <p class="empty" id="empty" hidden>No changesets match the filters.</p>
+
+        <div class="pager">
+          <span id="summary" class="summary"></span>
+          <div class="pager-controls">
+            <label>
+              <span>Rows</span>
+              <select id="page-size">
+                <option>10</option>
+                <option>25</option>
+                <option>50</option>
+                <option>100</option>
+              </select>
+            </label>
+            <button type="button" id="first">« First</button>
+            <button type="button" id="prev">‹ Prev</button>
+            <span id="page-label" class="page-label"></span>
+            <button type="button" id="next">Next ›</button>
+            <button type="button" id="last">Last »</button>
+          </div>
+        </div>
+      </section>
+
+      <p class="error" id="error" hidden></p>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

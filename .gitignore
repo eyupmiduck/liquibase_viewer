@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # The beads issue tracker is local-only; keep its database and config out of git.
 .beads/
+
+# IDE files
+.idea/

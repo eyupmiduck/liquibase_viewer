@@ -6,6 +6,9 @@
 #
 # The database password is never stored here: it is read from the environment
 # variable named by `database.passwordEnv` (VIEWER_DB_PASSWORD by default).
+#
+# These values mirror the built-in defaults in src/config.js, which are used
+# when this file is absent. Keep the two in sync.
 
 database:
   host: 127.0.0.1

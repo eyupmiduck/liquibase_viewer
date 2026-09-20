@@ -22,7 +22,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   },
   changelog: { schema: 'public', table: 'databasechangelog' },
   lock: { schema: 'public', table: 'databasechangeloglock' },
-  server: { host: '127.0.0.1', port: 3210, pageSize: 25, maxPageSize: 200 },
+  server: { host: '127.0.0.1', port: 3210, pageSize: 25, maxPageSize: 200, allowUnlock: true },
 });
 
 /** Raised for any configuration problem, so the server can report it cleanly. */
@@ -60,7 +60,11 @@ export function parseArgs(argv) {
       args.configPath = value;
       index += 1;
     } else if (arg.startsWith('--config=')) {
-      args.configPath = arg.slice('--config='.length);
+      const value = arg.slice('--config='.length);
+      if (value === '') {
+        throw new ConfigError('--config requires a file path');
+      }
+      args.configPath = value;
     } else if (arg === '-h' || arg === '--help') {
       args.help = true;
     } else {
@@ -107,6 +111,9 @@ function validateConfig(config) {
   requireInteger(config.server?.port, 'server.port', { min: 1, max: 65535 });
   requireInteger(config.server?.pageSize, 'server.pageSize', { min: 1 });
   requireInteger(config.server?.maxPageSize, 'server.maxPageSize', { min: 1 });
+  if (typeof config.server?.allowUnlock !== 'boolean') {
+    throw new ConfigError('server.allowUnlock must be true or false');
+  }
   if (config.server.pageSize > config.server.maxPageSize) {
     throw new ConfigError('server.pageSize must not exceed server.maxPageSize');
   }
@@ -134,13 +141,18 @@ export function loadConfig({
   cwd = process.cwd(),
 } = {}) {
   const args = parseArgs(argv);
-  const requestedPath = args.configPath ?? env.CONFIG;
+  const requestedPath = args.configPath ?? (env.CONFIG || undefined);
   const explicit = requestedPath !== undefined;
   const configPath = path.resolve(cwd, requestedPath ?? DEFAULT_CONFIG_PATH);
 
   let fileConfig = {};
   if (fs.existsSync(configPath)) {
-    const parsed = YAML.parse(fs.readFileSync(configPath, 'utf8'));
+    let parsed;
+    try {
+      parsed = YAML.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (error) {
+      throw new ConfigError(`Failed to parse configuration file ${configPath}: ${error.message}`);
+    }
     if (parsed !== null && !isPlainObject(parsed)) {
       throw new ConfigError(`Configuration file ${configPath} must contain a YAML mapping`);
     }

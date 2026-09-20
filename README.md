@@ -44,6 +44,7 @@ server:
   port: 3210
   pageSize: 25
   maxPageSize: 200
+  allowUnlock: true # set false to disable the unlock endpoint
 ```
 
 A database can hold several changelog tables for different deployments; point
@@ -93,7 +94,7 @@ VIEWER_DB_PASSWORD=postgres npm test
 
 | Method | Path               | Description                                                          |
 | ------ | ------------------ | -------------------------------------------------------------------- |
-| GET    | `/api/config`      | Non-secret configuration (target database and table names).          |
+| GET    | `/api/config`      | Display target and page-size settings (no connection credentials).   |
 | GET    | `/api/changelog`   | Paginated changelog. See the query parameters below.                 |
 | GET    | `/api/lock`        | Rows from the lock table.                                            |
 | POST   | `/api/lock/unlock` | Releases a held lock (Liquibase `releaseLocks`); returns `released`. |
@@ -115,6 +116,7 @@ VIEWER_DB_PASSWORD=postgres npm test
 - Schema and table names from the config are validated and quoted; filter values
   are bound parameters.
 - The server binds to `127.0.0.1` by default. Exposing it beyond localhost is at
-  your own risk — there is no authentication.
+  your own risk — there is no authentication. Set `server.allowUnlock: false` to
+  disable the unlock endpoint entirely.
 - Releasing a lock is a write. Only do it when no deployment is running; the UI
   asks for confirmation first.

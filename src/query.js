@@ -53,6 +53,14 @@ function clampPageSize(config, requested) {
   return Math.min(parsed, max);
 }
 
+// Express may hand a repeated query parameter through as an array; only a
+// single non-blank string is accepted, so a bind parameter cannot fail a cast.
+function asFilterString(value) {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
 /**
  * Builds the paginated, filtered changelog query. Values are always passed as
  * bind parameters; only validated identifiers and allow-listed sort columns are
@@ -74,16 +82,20 @@ export function buildChangelogQuery(config, params = {}) {
   };
 
   for (const [name, column] of Object.entries(FILTER_COLUMNS)) {
-    const value = filters[name];
-    if (value !== undefined && value !== null && String(value).trim() !== '') {
-      where.push(`${column} ILIKE ${placeholder(`%${String(value).trim()}%`)}`);
+    const value = asFilterString(filters[name]);
+    if (value !== undefined) {
+      where.push(`${column} ILIKE ${placeholder(`%${value}%`)}`);
     }
   }
-  if (filters.from) {
-    where.push(`dateexecuted >= ${placeholder(filters.from)}::timestamp`);
+  const from = asFilterString(filters.from);
+  if (from !== undefined) {
+    where.push(`dateexecuted >= ${placeholder(from)}::timestamp`);
   }
-  if (filters.to) {
-    where.push(`dateexecuted <= ${placeholder(filters.to)}::timestamp`);
+  const to = asFilterString(filters.to);
+  if (to !== undefined) {
+    // The UI sends a date; include the whole day by using an exclusive upper
+    // bound at midnight of the following day.
+    where.push(`dateexecuted < (${placeholder(to)}::date + 1)`);
   }
   const whereSql = where.length > 0 ? ` WHERE ${where.join(' AND ')}` : '';
 

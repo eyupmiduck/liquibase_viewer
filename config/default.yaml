@@ -31,3 +31,5 @@ server:
   port: 3210
   pageSize: 25
   maxPageSize: 200
+  # Set to false to disable the unlock endpoint (and hide its button).
+  allowUnlock: true

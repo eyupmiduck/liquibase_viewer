@@ -1,11 +1,26 @@
+const API = {
+  config: '/api/config',
+  changelog: '/api/changelog',
+  lock: '/api/lock',
+  unlock: '/api/lock/unlock',
+};
+
+// Known Liquibase execution types, used to pick a badge style safely.
+const EXEC_TYPES = new Set(['EXECUTED', 'FAILED', 'RERAN', 'MARK_RAN', 'SKIPPED']);
+
 const state = {
   page: 1,
   pages: 1,
   pageSize: 25,
   sort: 'orderexecuted',
   dir: 'asc',
+  allowUnlock: true,
   filters: {},
 };
+
+// Incremented on every changelog request so a slower, older response cannot
+// overwrite a newer one.
+let changelogRequest = 0;
 
 const elements = {
   target: document.getElementById('target'),
@@ -78,7 +93,7 @@ function renderRows(rows) {
     const typeCell = document.createElement('td');
     if (row.exectype) {
       const badge = document.createElement('span');
-      badge.className = `badge ${row.exectype}`;
+      badge.className = `badge ${EXEC_TYPES.has(row.exectype) ? row.exectype : 'OTHER'}`;
       badge.textContent = row.exectype;
       typeCell.append(badge);
     }
@@ -116,6 +131,8 @@ function markSortedColumn() {
 
 async function loadChangelog() {
   clearError();
+  const token = ++changelogRequest;
+
   const params = new URLSearchParams({
     page: String(state.page),
     pageSize: String(state.pageSize),
@@ -127,12 +144,14 @@ async function loadChangelog() {
   }
 
   try {
-    const result = await api(`/api/changelog?${params}`);
+    const result = await api(`${API.changelog}?${params}`);
+    if (token !== changelogRequest) return;
     renderRows(result.rows);
     renderPagination(result);
     markSortedColumn();
     elements.empty.hidden = result.total !== 0;
   } catch (error) {
+    if (token !== changelogRequest) return;
     showError(error);
   }
 }
@@ -156,24 +175,34 @@ function renderLock(rows) {
     .filter(Boolean)
     .join(', ');
   elements.lockText.textContent = `Locked${details ? ` by ${details}` : ''}`;
-  elements.unlock.hidden = false;
+  elements.unlock.hidden = !state.allowUnlock;
 }
 
 async function loadLock() {
   try {
-    const { rows } = await api('/api/lock');
+    const { rows } = await api(API.lock);
     renderLock(rows);
   } catch (error) {
     showError(error);
   }
 }
 
+function ensurePageSizeOption(value) {
+  const exists = [...elements.pageSize.options].some((option) => Number(option.value) === value);
+  if (!exists) {
+    const option = document.createElement('option');
+    option.value = String(value);
+    option.textContent = String(value);
+    elements.pageSize.append(option);
+  }
+}
+
 async function loadConfig() {
-  const config = await api('/api/config');
-  elements.target.textContent =
-    `${config.database.user}@${config.database.host}:${config.database.port}/${config.database.name}` +
-    ` · ${config.changelog.schema}.${config.changelog.table}`;
+  const config = await api(API.config);
+  elements.target.textContent = config.target;
   state.pageSize = config.server.pageSize;
+  state.allowUnlock = config.allowUnlock;
+  ensurePageSizeOption(config.server.pageSize);
   elements.pageSize.value = String(config.server.pageSize);
 }
 
@@ -184,6 +213,17 @@ function readFilters() {
     if (String(value).trim() !== '') filters[key] = String(value).trim();
   }
   return filters;
+}
+
+function sortBy(column) {
+  if (state.sort === column) {
+    state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    state.sort = column;
+    state.dir = 'asc';
+  }
+  state.page = 1;
+  loadChangelog();
 }
 
 function bindEvents() {
@@ -225,16 +265,13 @@ function bindEvents() {
   });
 
   for (const th of elements.table.querySelectorAll('th[data-sort]')) {
-    th.addEventListener('click', () => {
-      const column = th.dataset.sort;
-      if (state.sort === column) {
-        state.dir = state.dir === 'asc' ? 'desc' : 'asc';
-      } else {
-        state.sort = column;
-        state.dir = 'asc';
+    th.tabIndex = 0;
+    th.addEventListener('click', () => sortBy(th.dataset.sort));
+    th.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        sortBy(th.dataset.sort);
       }
-      state.page = 1;
-      loadChangelog();
     });
   }
 
@@ -243,7 +280,7 @@ function bindEvents() {
       return;
     }
     try {
-      const { released } = await api('/api/lock/unlock', { method: 'POST' });
+      const { released } = await api(API.unlock, { method: 'POST' });
       await loadLock();
       await loadChangelog();
       if (released === 0) {

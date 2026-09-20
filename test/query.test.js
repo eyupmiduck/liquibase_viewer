@@ -36,8 +36,19 @@ test('ignores blank filters and adds a date range', () => {
 
   assert.doesNotMatch(query.rowsSql, /id ILIKE/);
   assert.match(query.rowsSql, /dateexecuted >= \$1::timestamp/);
-  assert.match(query.rowsSql, /dateexecuted <= \$2::timestamp/);
+  // `to` is inclusive of the whole day.
+  assert.match(query.rowsSql, /dateexecuted < \(\$2::date \+ 1\)/);
   assert.deepEqual(query.countValues, ['2024-01-01', '2024-12-31']);
+});
+
+test('ignores filter values that are not a single string', () => {
+  const query = buildChangelogQuery(DEFAULT_CONFIG, {
+    filters: { author: ['a', 'b'], from: ['2024-01-01', '2024-02-01'] },
+  });
+
+  assert.doesNotMatch(query.rowsSql, /author ILIKE/);
+  assert.doesNotMatch(query.rowsSql, /WHERE/);
+  assert.deepEqual(query.countValues, []);
 });
 
 test('falls back to a safe sort column', () => {

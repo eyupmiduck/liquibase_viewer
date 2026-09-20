@@ -22,14 +22,12 @@ database.passwordEnv in the configuration (VIEWER_DB_PASSWORD by default).`);
 
 function publicConfig(config) {
   return {
-    database: {
-      host: config.database.host,
-      port: config.database.port,
-      name: config.database.name,
-      user: config.database.user,
-    },
-    changelog: config.changelog,
-    lock: config.lock,
+    // The UI only needs a display label, so keep the raw connection
+    // coordinates server-side.
+    target:
+      `${config.database.user}@${config.database.host}:${config.database.port}/${config.database.name}` +
+      ` · ${config.changelog.schema}.${config.changelog.table}`,
+    allowUnlock: config.server.allowUnlock,
     server: { pageSize: config.server.pageSize, maxPageSize: config.server.maxPageSize },
   };
 }
@@ -82,6 +80,10 @@ function createApp(config, pool) {
   });
 
   app.post('/api/lock/unlock', async (request, response, next) => {
+    if (!config.server.allowUnlock) {
+      response.status(403).json({ error: 'Unlocking is disabled by configuration' });
+      return;
+    }
     try {
       response.json({ released: await unlock(pool, config) });
     } catch (error) {
@@ -92,7 +94,7 @@ function createApp(config, pool) {
   // Express needs four arguments to treat this as error middleware.
   app.use((error, request, response, _next) => {
     console.error(error);
-    response.status(500).json({ error: error.message });
+    response.status(500).json({ error: 'Internal server error' });
   });
 
   return app;
@@ -130,7 +132,7 @@ async function main() {
   });
 
   const shutdown = async () => {
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
     await pool.end();
     process.exit(0);
   };

@@ -19,6 +19,7 @@ test('parses --config and --config= forms', () => {
   assert.equal(parseArgs(['--help']).help, true);
   assert.throws(() => parseArgs(['--nope']), ConfigError);
   assert.throws(() => parseArgs(['--config']), ConfigError);
+  assert.throws(() => parseArgs(['--config=']), ConfigError);
 });
 
 test('falls back to the default config and reads the password from the environment', () => {
@@ -27,7 +28,21 @@ test('falls back to the default config and reads the password from the environme
   assert.equal(config.database.host, '127.0.0.1');
   assert.equal(config.database.name, 'ddl_utils');
   assert.equal(config.changelog.table, 'databasechangelog');
+  assert.equal(config.server.allowUnlock, true);
   assert.equal(config.password, 'secret');
+});
+
+test('treats an empty CONFIG variable as unset', () => {
+  const config = loadConfig({ argv: [], env: { CONFIG: '', VIEWER_DB_PASSWORD: 'secret' } });
+  assert.equal(config.database.name, 'ddl_utils');
+});
+
+test('wraps a malformed YAML file in a ConfigError', () => {
+  const file = writeConfig('database:\n  host: [unterminated\n');
+  assert.throws(
+    () => loadConfig({ argv: ['--config', file], env: { VIEWER_DB_PASSWORD: 'x' } }),
+    ConfigError,
+  );
 });
 
 test('loads an explicit config file and merges it over the defaults', () => {

@@ -27,7 +27,8 @@ test('falls back to the default config and reads the password from the environme
 
   assert.equal(config.database.host, '127.0.0.1');
   assert.equal(config.database.name, 'ddl_utils');
-  assert.equal(config.changelog.table, 'databasechangelog');
+  assert.equal(config.changelog.schema, 'liquibase');
+  assert.equal(config.changelog.table, 'ddl_utils_databasechangelog');
   assert.equal(config.server.allowUnlock, true);
   assert.equal(config.password, 'secret');
 });

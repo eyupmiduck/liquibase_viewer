@@ -22,6 +22,23 @@
 
     <main>
       <section class="panel">
+        <form id="target-form" class="filters" autocomplete="off">
+          <label>
+            <span>Schema</span>
+            <input name="schema" type="text" placeholder="liquibase" />
+          </label>
+          <label>
+            <span>Changelog table</span>
+            <input name="table" type="text" placeholder="ddl_utils_databasechangelog" />
+          </label>
+          <div class="filters-actions">
+            <button type="submit">Load</button>
+            <button type="button" id="target-reset" class="ghost">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
         <form id="filters" class="filters" autocomplete="off">
           <label>
             <span>ID</span>
@@ -99,7 +116,10 @@
         </div>
       </section>
 
-      <p class="error" id="error" hidden></p>
+      <div class="error" id="error" role="alert" hidden>
+        <span id="error-text"></span>
+        <button type="button" id="error-close" aria-label="Dismiss error">×</button>
+      </div>
     </main>
 
     <script type="module" src="/app.js"></script>

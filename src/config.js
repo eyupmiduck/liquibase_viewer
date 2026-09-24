@@ -20,8 +20,8 @@ export const DEFAULT_CONFIG = Object.freeze({
     passwordEnv: 'VIEWER_DB_PASSWORD',
     ssl: false,
   },
-  changelog: { schema: 'public', table: 'databasechangelog' },
-  lock: { schema: 'public', table: 'databasechangeloglock' },
+  changelog: { schema: 'liquibase', table: 'ddl_utils_databasechangelog' },
+  lock: { schema: 'liquibase', table: 'ddl_utils_databasechangeloglock' },
   server: { host: '127.0.0.1', port: 3210, pageSize: 25, maxPageSize: 200, allowUnlock: true },
 });
 

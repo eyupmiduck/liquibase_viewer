@@ -5,9 +5,9 @@ import { DEFAULT_CONFIG } from '../src/config.js';
 import { buildChangelogQuery } from '../src/query.js';
 
 test('builds a default query with no filters', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG);
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog);
 
-  assert.match(query.rowsSql, /FROM "public"\."databasechangelog"/);
+  assert.match(query.rowsSql, /FROM "liquibase"\."ddl_utils_databasechangelog"/);
   assert.doesNotMatch(query.rowsSql, /WHERE/);
   assert.match(query.rowsSql, /ORDER BY orderexecuted ASC/);
   assert.equal(query.page, 1);
@@ -18,7 +18,7 @@ test('builds a default query with no filters', () => {
 });
 
 test('parameterizes filter values instead of interpolating them', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG, {
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog, {
     filters: { id: "x'; drop table users; --", author: 'alice' },
   });
 
@@ -30,7 +30,7 @@ test('parameterizes filter values instead of interpolating them', () => {
 });
 
 test('ignores blank filters and adds a date range', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG, {
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog, {
     filters: { id: '  ', from: '2024-01-01', to: '2024-12-31' },
   });
 
@@ -42,7 +42,7 @@ test('ignores blank filters and adds a date range', () => {
 });
 
 test('ignores filter values that are not a single string', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG, {
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog, {
     filters: { author: ['a', 'b'], from: ['2024-01-01', '2024-02-01'] },
   });
 
@@ -52,21 +52,29 @@ test('ignores filter values that are not a single string', () => {
 });
 
 test('falls back to a safe sort column', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG, { sort: 'md5sum; drop table x', dir: 'desc' });
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog, {
+    sort: 'md5sum; drop table x',
+    dir: 'desc',
+  });
 
   assert.match(query.rowsSql, /ORDER BY orderexecuted DESC/);
   assert.equal(query.sort, 'orderexecuted');
 });
 
 test('clamps the page size to the configured maximum', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG, { pageSize: '100000' });
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog, {
+    pageSize: '100000',
+  });
 
   assert.equal(query.pageSize, DEFAULT_CONFIG.server.maxPageSize);
   assert.deepEqual(query.rowsValues, [DEFAULT_CONFIG.server.maxPageSize, 0]);
 });
 
 test('computes the offset from the page number', () => {
-  const query = buildChangelogQuery(DEFAULT_CONFIG, { page: '3', pageSize: '10' });
+  const query = buildChangelogQuery(DEFAULT_CONFIG, DEFAULT_CONFIG.changelog, {
+    page: '3',
+    pageSize: '10',
+  });
 
   assert.equal(query.page, 3);
   assert.deepEqual(query.rowsValues, [10, 20]);

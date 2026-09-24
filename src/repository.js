@@ -6,12 +6,14 @@ import { buildChangelogQuery } from './query.js';
  *
  * @param {import('pg').Pool} pool the connection pool
  * @param {object} config the application configuration
+ * @param {{schema: string, table: string}} target the changelog table to read
  * @param {object} [params] pagination, sorting and filter values
  * @returns {Promise<{rows: object[], total: number, page: number, pageSize: number, pages: number}>} the page
  */
-export async function listChangelog(pool, config, params = {}) {
+export async function listChangelog(pool, config, target, params = {}) {
   const { rowsSql, countSql, rowsValues, countValues, page, pageSize } = buildChangelogQuery(
     config,
+    target,
     params,
   );
 
@@ -34,11 +36,11 @@ export async function listChangelog(pool, config, params = {}) {
  * Reads every row of the lock table.
  *
  * @param {import('pg').Pool} pool the connection pool
- * @param {object} config the application configuration
+ * @param {{schema: string, table: string}} target the lock table to read
  * @returns {Promise<object[]>} the lock rows
  */
-export async function listLocks(pool, config) {
-  const table = qualifyName(config.lock.schema, config.lock.table);
+export async function listLocks(pool, target) {
+  const table = qualifyName(target.schema, target.table);
   const { rows } = await pool.query(
     `SELECT id, locked, lockgranted, lockedby FROM ${table} ORDER BY id`,
   );
@@ -50,11 +52,11 @@ export async function listLocks(pool, config) {
  * releaseLocks: clear `locked`, `lockgranted` and `lockedby`.
  *
  * @param {import('pg').Pool} pool the connection pool
- * @param {object} config the application configuration
+ * @param {{schema: string, table: string}} target the lock table to unlock
  * @returns {Promise<number>} the number of lock rows that were held and released
  */
-export async function unlock(pool, config) {
-  const table = qualifyName(config.lock.schema, config.lock.table);
+export async function unlock(pool, target) {
+  const table = qualifyName(target.schema, target.table);
   const result = await pool.query(
     `UPDATE ${table} SET locked = false, lockgranted = NULL, lockedby = NULL WHERE locked`,
   );

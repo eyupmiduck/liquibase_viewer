@@ -67,11 +67,12 @@ function asFilterString(value) {
  * interpolated.
  *
  * @param {object} config the application configuration
+ * @param {{schema: string, table: string}} target the changelog table to read
  * @param {object} [params] pagination, sorting and filter values
  * @returns {{rowsSql: string, countSql: string, rowsValues: unknown[], countValues: unknown[], page: number, pageSize: number, sort: string, dir: string}} the queries and resolved parameters
  */
-export function buildChangelogQuery(config, params = {}) {
-  const table = qualifyName(config.changelog.schema, config.changelog.table);
+export function buildChangelogQuery(config, target, params = {}) {
+  const table = qualifyName(target.schema, target.table);
   const filters = params.filters ?? {};
 
   const where = [];

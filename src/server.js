@@ -6,6 +6,7 @@ import express from 'express';
 import { ConfigError, loadConfig, parseArgs } from './config.js';
 import { createPool } from './db.js';
 import { listChangelog, listLocks, unlock } from './repository.js';
+import { resolveTarget, TargetError } from './target.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -24,12 +25,22 @@ function publicConfig(config) {
   return {
     // The UI only needs a display label, so keep the raw connection
     // coordinates server-side.
-    target:
-      `${config.database.user}@${config.database.host}:${config.database.port}/${config.database.name}` +
-      ` · ${config.changelog.schema}.${config.changelog.table}`,
+    connection: `${config.database.user}@${config.database.host}:${config.database.port}/${config.database.name}`,
+    // Defaults for the editable schema/table inputs.
+    schema: config.changelog.schema,
+    table: config.changelog.table,
     allowUnlock: config.server.allowUnlock,
     server: { pageSize: config.server.pageSize, maxPageSize: config.server.maxPageSize },
   };
+}
+
+// Answers 400 for a bad schema/table and reports whether it handled the error.
+function sendTargetError(error, response) {
+  if (error instanceof TargetError) {
+    response.status(400).json({ error: error.message });
+    return true;
+  }
+  return false;
 }
 
 function parseChangelogParams(query) {
@@ -65,16 +76,22 @@ function createApp(config, pool) {
 
   app.get('/api/changelog', async (request, response, next) => {
     try {
-      response.json(await listChangelog(pool, config, parseChangelogParams(request.query)));
+      const target = resolveTarget(config, request.query);
+      response.json(
+        await listChangelog(pool, config, target.changelog, parseChangelogParams(request.query)),
+      );
     } catch (error) {
+      if (sendTargetError(error, response)) return;
       next(error);
     }
   });
 
   app.get('/api/lock', async (request, response, next) => {
     try {
-      response.json({ rows: await listLocks(pool, config) });
+      const target = resolveTarget(config, request.query);
+      response.json({ rows: await listLocks(pool, target.lock) });
     } catch (error) {
+      if (sendTargetError(error, response)) return;
       next(error);
     }
   });
@@ -85,14 +102,22 @@ function createApp(config, pool) {
       return;
     }
     try {
-      response.json({ released: await unlock(pool, config) });
+      const target = resolveTarget(config, request.query);
+      response.json({ released: await unlock(pool, target.lock) });
     } catch (error) {
+      if (sendTargetError(error, response)) return;
       next(error);
     }
   });
 
   // Express needs four arguments to treat this as error middleware.
   app.use((error, request, response, _next) => {
+    // A schema or table that does not exist is a client mistake, not a server
+    // fault: 42P01 = undefined_table, 3F000 = invalid_schema_name.
+    if (error?.code === '42P01' || error?.code === '3F000') {
+      response.status(404).json({ error: 'Table not found: check the schema and table names.' });
+      return;
+    }
     console.error(error);
     response.status(500).json({ error: 'Internal server error' });
   });

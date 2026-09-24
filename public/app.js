@@ -16,6 +16,9 @@ const state = {
   dir: 'asc',
   allowUnlock: true,
   filters: {},
+  schema: '',
+  table: '',
+  defaults: { schema: '', table: '' },
 };
 
 // Incremented on every changelog request so a slower, older response cannot
@@ -27,6 +30,10 @@ const elements = {
   lock: document.getElementById('lock'),
   lockText: document.getElementById('lock-text'),
   unlock: document.getElementById('unlock'),
+  targetForm: document.getElementById('target-form'),
+  targetReset: document.getElementById('target-reset'),
+  schemaInput: document.querySelector('#target-form input[name="schema"]'),
+  tableInput: document.querySelector('#target-form input[name="table"]'),
   filters: document.getElementById('filters'),
   clear: document.getElementById('clear'),
   rows: document.getElementById('rows'),
@@ -39,6 +46,8 @@ const elements = {
   next: document.getElementById('next'),
   last: document.getElementById('last'),
   error: document.getElementById('error'),
+  errorText: document.getElementById('error-text'),
+  errorClose: document.getElementById('error-close'),
   table: document.getElementById('changelog'),
 };
 
@@ -58,12 +67,12 @@ async function api(path, options) {
 }
 
 function showError(error) {
-  elements.error.textContent = error.message;
+  elements.errorText.textContent = error.message;
   elements.error.hidden = false;
 }
 
 function clearError() {
-  elements.error.textContent = '';
+  elements.errorText.textContent = '';
   elements.error.hidden = true;
 }
 
@@ -129,6 +138,10 @@ function markSortedColumn() {
   }
 }
 
+function targetParams() {
+  return { schema: state.schema, table: state.table };
+}
+
 async function loadChangelog() {
   clearError();
   const token = ++changelogRequest;
@@ -138,6 +151,8 @@ async function loadChangelog() {
     pageSize: String(state.pageSize),
     sort: state.sort,
     dir: state.dir,
+    schema: state.schema,
+    table: state.table,
   });
   for (const [key, value] of Object.entries(state.filters)) {
     if (value) params.set(key, value);
@@ -180,7 +195,8 @@ function renderLock(rows) {
 
 async function loadLock() {
   try {
-    const { rows } = await api(API.lock);
+    const params = new URLSearchParams(targetParams());
+    const { rows } = await api(`${API.lock}?${params}`);
     renderLock(rows);
   } catch (error) {
     showError(error);
@@ -199,9 +215,14 @@ function ensurePageSizeOption(value) {
 
 async function loadConfig() {
   const config = await api(API.config);
-  elements.target.textContent = config.target;
+  elements.target.textContent = config.connection;
   state.pageSize = config.server.pageSize;
   state.allowUnlock = config.allowUnlock;
+  state.defaults = { schema: config.schema, table: config.table };
+  state.schema = config.schema;
+  state.table = config.table;
+  elements.schemaInput.value = config.schema;
+  elements.tableInput.value = config.table;
   ensurePageSizeOption(config.server.pageSize);
   elements.pageSize.value = String(config.server.pageSize);
 }
@@ -227,6 +248,31 @@ function sortBy(column) {
 }
 
 function bindEvents() {
+  elements.errorClose.addEventListener('click', clearError);
+
+  elements.targetForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    state.schema = elements.schemaInput.value.trim() || state.defaults.schema;
+    state.table = elements.tableInput.value.trim() || state.defaults.table;
+    elements.schemaInput.value = state.schema;
+    elements.tableInput.value = state.table;
+    state.page = 1;
+    clearError();
+    loadChangelog();
+    loadLock();
+  });
+
+  elements.targetReset.addEventListener('click', () => {
+    state.schema = state.defaults.schema;
+    state.table = state.defaults.table;
+    elements.schemaInput.value = state.schema;
+    elements.tableInput.value = state.table;
+    state.page = 1;
+    clearError();
+    loadChangelog();
+    loadLock();
+  });
+
   elements.filters.addEventListener('submit', (event) => {
     event.preventDefault();
     state.filters = readFilters();
@@ -280,7 +326,8 @@ function bindEvents() {
       return;
     }
     try {
-      const { released } = await api(API.unlock, { method: 'POST' });
+      const params = new URLSearchParams(targetParams());
+      const { released } = await api(`${API.unlock}?${params}`, { method: 'POST' });
       await loadLock();
       await loadChangelog();
       if (released === 0) {

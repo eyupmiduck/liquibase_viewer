@@ -3,13 +3,19 @@
 A small web application to browse the Liquibase bookkeeping tables in a
 PostgreSQL database:
 
-- the **changelog** table (`public.databasechangelog` by default): every applied
-  changeset, with pagination, filtering and sorting;
-- the **lock** table (`public.databasechangeloglock` by default): its state, and
-  a button to release a stuck lock.
+- the **changelog** table (`liquibase.ddl_utils_databasechangelog` by default):
+  every applied changeset, with pagination, filtering and sorting;
+- the **lock** table (`liquibase.ddl_utils_databasechangeloglock` by default):
+  its state, and a button to release a stuck lock.
 
 It is read-only apart from the explicit unlock action. The UI is plain
 HTML/CSS/ES modules — there is no build step.
+
+The top of the page has editable **Schema** and **Changelog table** fields,
+pre-filled from the configuration, so you can point the viewer at any changelog
+table without restarting. The lock table is derived from the changelog table as
+`<table>lock` (the Liquibase convention), so the lock panel follows the target
+you select. **Reset** restores the configured defaults.
 
 ## Requirements
 
@@ -32,12 +38,12 @@ database:
   ssl: false
 
 changelog:
-  schema: public
-  table: databasechangelog
+  schema: liquibase
+  table: ddl_utils_databasechangelog
 
 lock:
-  schema: public
-  table: databasechangeloglock
+  schema: liquibase
+  table: ddl_utils_databasechangeloglock
 
 server:
   host: 127.0.0.1
@@ -100,6 +106,12 @@ VIEWER_DB_PASSWORD=postgres npm test
 | GET    | `/api/changelog`   | Paginated changelog. See the query parameters below.                 |
 | GET    | `/api/lock`        | Rows from the lock table.                                            |
 | POST   | `/api/lock/unlock` | Releases a held lock (Liquibase `releaseLocks`); returns `released`. |
+
+`/api/changelog`, `/api/lock` and `/api/lock/unlock` all accept optional
+`schema` and `table` query parameters that override the configured changelog
+target for that request; `table` also determines the lock table. Names must be
+valid SQL identifiers (they are quoted, never bound), so an invalid name is a
+`400` and a missing schema/table is a `404`.
 
 `GET /api/changelog` query parameters:
 

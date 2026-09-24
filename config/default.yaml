@@ -20,14 +20,15 @@ database:
 
 # The Liquibase changelog table. A database can hold several changelog tables
 # for different deployments; point these at the right schema and table.
+# ddl_utils keeps its tracking tables in a dedicated `liquibase` schema.
 changelog:
-  schema: public
-  table: databasechangelog
+  schema: liquibase
+  table: ddl_utils_databasechangelog
 
 # The Liquibase lock table.
 lock:
-  schema: public
-  table: databasechangeloglock
+  schema: liquibase
+  table: ddl_utils_databasechangeloglock
 
 server:
   host: 127.0.0.1
